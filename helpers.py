@@ -46,9 +46,8 @@ def register_new_courier_and_return_login_password():
 
 def delete_courier(courier_id):
     """Удаляет курьера по ID"""
-    if courier_id:
-        response = requests.delete(f'{DELETE_COURIER_URL}/{courier_id}')
-        return response
+    response = requests.delete(f'{DELETE_COURIER_URL}/{courier_id}')
+    return response
 
 
 def login_courier(login, password):
@@ -58,6 +57,4 @@ def login_courier(login, password):
         "password": password
     }
     response = requests.post(LOGIN_COURIER_URL, data=payload)
-    if response.status_code == 200:
-        return response.json().get("id")
-    return None
+    return response.json().get("id")

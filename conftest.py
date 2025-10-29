@@ -35,8 +35,7 @@ def new_courier():
     
     # Удаляем курьера после теста (teardown)
     courier_id = login_courier(login, password)
-    if courier_id:
-        delete_courier(courier_id)
+    delete_courier(courier_id)
 
 
 @pytest.fixture
