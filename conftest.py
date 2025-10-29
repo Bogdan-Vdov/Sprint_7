@@ -1,16 +1,15 @@
 import pytest
 import requests
-from helpers import delete_courier, login_courier
+from helpers import delete_courier, login_courier, generate_random_string
+from data import CREATE_COURIER_URL, CANCEL_ORDER_URL
 
 
 @pytest.fixture
-def courier_data():
+def new_courier():
     """
-    Фикстура для создания и удаления тестового курьера
+    Фикстура для создания и удаления курьера
     Возвращает словарь с данными курьера
     """
-    from helpers import generate_random_string, CREATE_COURIER_URL
-    
     # Создаём данные курьера
     login = generate_random_string(10)
     password = generate_random_string(10)
@@ -23,22 +22,33 @@ def courier_data():
     }
     
     # Создаём курьера
-    response = requests.post(CREATE_COURIER_URL, data=payload)
+    requests.post(CREATE_COURIER_URL, data=payload)
     
     courier_info = {
         "login": login,
         "password": password,
-        "firstName": first_name,
-        "id": None
+        "firstName": first_name
     }
     
     # Возвращаем данные курьера для использования в тесте
     yield courier_info
     
     # Удаляем курьера после теста (teardown)
-    if courier_info["id"] is None:
-        courier_id = login_courier(login, password)
-        if courier_id:
-            delete_courier(courier_id)
-    else:
-        delete_courier(courier_info["id"])
+    courier_id = login_courier(login, password)
+    if courier_id:
+        delete_courier(courier_id)
+
+
+@pytest.fixture
+def created_order_track():
+    """
+    Фикстура для отмены созданного заказа
+    Сохраняет track заказа и отменяет его после теста
+    """
+    track_numbers = []
+    
+    yield track_numbers
+    
+    # Отменяем все созданные заказы
+    for track in track_numbers:
+        requests.put(CANCEL_ORDER_URL, json={"track": track})

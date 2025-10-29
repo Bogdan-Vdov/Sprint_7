@@ -7,9 +7,8 @@ import os
 # Добавляем корневую директорию проекта в путь
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from helpers import (generate_random_string, register_new_courier_and_return_login_password, 
-                     login_courier, delete_courier)
-from data import CREATE_COURIER_URL, LOGIN_COURIER_URL
+from helpers import generate_random_string
+from data import LOGIN_COURIER_URL, ERROR_MESSAGES
 
 
 @allure.suite('Логин курьера')
@@ -18,17 +17,12 @@ class TestLoginCourier:
 
     @allure.title('Проверка успешной авторизации курьера')
     @allure.description('Курьер может авторизоваться и успешный запрос возвращает id')
-    def test_login_courier_success_returns_200_and_id(self):
+    def test_login_courier_success_returns_200_and_id(self, new_courier):
         """Проверка: курьер может авторизоваться, успешный запрос возвращает id"""
-        # Создаём нового курьера
-        courier_data = register_new_courier_and_return_login_password()
-        login = courier_data[0]
-        password = courier_data[1]
-
-        # Авторизуемся
+        # Авторизуемся с данными из фикстуры
         payload = {
-            "login": login,
-            "password": password
+            "login": new_courier["login"],
+            "password": new_courier["password"]
         }
         response = requests.post(LOGIN_COURIER_URL, data=payload)
 
@@ -40,63 +34,34 @@ class TestLoginCourier:
         assert "id" in response_data, "В ответе нет поля 'id'"
         assert isinstance(response_data["id"], int), "Поле 'id' должно быть числом"
 
-        # Удаляем курьера
-        courier_id = response_data["id"]
-        delete_courier(courier_id)
-
-    @allure.title('Проверка авторизации без поля login')
-    @allure.description('Если нет поля login, запрос возвращает ошибку')
-    def test_login_courier_without_login_returns_400_error(self):
-        """Проверка: если какого-то поля нет (login), запрос возвращает ошибку"""
-        password = generate_random_string(10)
-
-        payload = {
-            "password": password
-        }
-
+    @allure.title('Проверка авторизации без обязательных полей')
+    @allure.description('Если нет обязательного поля, запрос возвращает ошибку')
+    @pytest.mark.parametrize('missing_field,payload_data', [
+        ('login', lambda: {"password": generate_random_string(10)}),
+        ('password', lambda: {"login": generate_random_string(10)})
+    ])
+    def test_login_courier_without_required_field_returns_400_error(self, missing_field, payload_data):
+        """Проверка: если какого-то обязательного поля нет, запрос возвращает ошибку"""
+        payload = payload_data()
         response = requests.post(LOGIN_COURIER_URL, data=payload)
 
         # Проверяем код ответа
-        assert response.status_code == 400, f"Ожидался код 400, получен {response.status_code}"
+        assert response.status_code == 400, f"Ожидался код 400 для отсутствующего поля '{missing_field}', получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
-
-    @allure.title('Проверка авторизации без поля password')
-    @allure.description('Если нет поля password, запрос возвращает ошибку')
-    def test_login_courier_without_password_returns_400_error(self):
-        """Проверка: если какого-то поля нет (password), запрос возвращает ошибку"""
-        login = generate_random_string(10)
-
-        payload = {
-            "login": login
-        }
-
-        response = requests.post(LOGIN_COURIER_URL, data=payload)
-
-        # Проверяем код ответа (400 или 504 при таймауте сервера)
-        assert response.status_code in [400, 504], f"Ожидался код 400 или 504, получен {response.status_code}"
-
-        # Проверяем тело ответа только если не таймаут
-        if response.status_code == 400:
-            response_data = response.json()
-            assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["insufficient_data_for_login"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['insufficient_data_for_login']}', получено '{response_data.get('message')}'"
 
     @allure.title('Проверка авторизации с неправильным логином')
     @allure.description('Система вернёт ошибку, если неправильно указать логин')
-    def test_login_courier_with_wrong_login_returns_404_error(self):
+    def test_login_courier_with_wrong_login_returns_404_error(self, new_courier):
         """Проверка: система вернёт ошибку, если неправильно указать логин"""
-        # Создаём курьера
-        courier_data = register_new_courier_and_return_login_password()
-        login = courier_data[0]
-        password = courier_data[1]
-
         # Пытаемся авторизоваться с неправильным логином
         wrong_login = generate_random_string(10)
         payload = {
             "login": wrong_login,
-            "password": password
+            "password": new_courier["password"]
         }
 
         response = requests.post(LOGIN_COURIER_URL, data=payload)
@@ -104,27 +69,19 @@ class TestLoginCourier:
         # Проверяем код ответа
         assert response.status_code == 404, f"Ожидался код 404, получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
-
-        # Удаляем курьера
-        courier_id = login_courier(login, password)
-        delete_courier(courier_id)
+        assert response_data.get("message") == ERROR_MESSAGES["account_not_found"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['account_not_found']}', получено '{response_data.get('message')}'"
 
     @allure.title('Проверка авторизации с неправильным паролем')
     @allure.description('Система вернёт ошибку, если неправильно указать пароль')
-    def test_login_courier_with_wrong_password_returns_404_error(self):
+    def test_login_courier_with_wrong_password_returns_404_error(self, new_courier):
         """Проверка: система вернёт ошибку, если неправильно указать пароль"""
-        # Создаём курьера
-        courier_data = register_new_courier_and_return_login_password()
-        login = courier_data[0]
-        password = courier_data[1]
-
         # Пытаемся авторизоваться с неправильным паролем
         wrong_password = generate_random_string(10)
         payload = {
-            "login": login,
+            "login": new_courier["login"],
             "password": wrong_password
         }
 
@@ -133,13 +90,10 @@ class TestLoginCourier:
         # Проверяем код ответа
         assert response.status_code == 404, f"Ожидался код 404, получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
-
-        # Удаляем курьера
-        courier_id = login_courier(login, password)
-        delete_courier(courier_id)
+        assert response_data.get("message") == ERROR_MESSAGES["account_not_found"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['account_not_found']}', получено '{response_data.get('message')}'"
 
     @allure.title('Проверка авторизации под несуществующим пользователем')
     @allure.description('Если авторизоваться под несуществующим пользователем, запрос возвращает ошибку')
@@ -159,6 +113,7 @@ class TestLoginCourier:
         # Проверяем код ответа
         assert response.status_code == 404, f"Ожидался код 404, получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["account_not_found"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['account_not_found']}', получено '{response_data.get('message')}'"
