@@ -1,6 +1,5 @@
 import requests
 import allure
-import pytest
 import sys
 import os
 
@@ -17,12 +16,12 @@ class TestLoginCourier:
 
     @allure.title('Проверка успешной авторизации курьера')
     @allure.description('Курьер может авторизоваться и успешный запрос возвращает id')
-    def test_login_courier_success_returns_200_and_id(self, new_courier):
+    def test_login_courier_success_returns_200_and_id(self, courier_data):
         """Проверка: курьер может авторизоваться, успешный запрос возвращает id"""
         # Авторизуемся с данными из фикстуры
         payload = {
-            "login": new_courier["login"],
-            "password": new_courier["password"]
+            "login": courier_data["login"],
+            "password": courier_data["password"]
         }
         response = requests.post(LOGIN_COURIER_URL, data=payload)
 
@@ -61,13 +60,13 @@ class TestLoginCourier:
 
     @allure.title('Проверка авторизации с неправильным логином')
     @allure.description('Система вернёт ошибку, если неправильно указать логин')
-    def test_login_courier_with_wrong_login_returns_404_error(self, new_courier):
+    def test_login_courier_with_wrong_login_returns_404_error(self, courier_data):
         """Проверка: система вернёт ошибку, если неправильно указать логин"""
         # Пытаемся авторизоваться с неправильным логином
         wrong_login = generate_random_string(10)
         payload = {
             "login": wrong_login,
-            "password": new_courier["password"]
+            "password": courier_data["password"]
         }
 
         response = requests.post(LOGIN_COURIER_URL, data=payload)
@@ -82,12 +81,12 @@ class TestLoginCourier:
 
     @allure.title('Проверка авторизации с неправильным паролем')
     @allure.description('Система вернёт ошибку, если неправильно указать пароль')
-    def test_login_courier_with_wrong_password_returns_404_error(self, new_courier):
+    def test_login_courier_with_wrong_password_returns_404_error(self, courier_data):
         """Проверка: система вернёт ошибку, если неправильно указать пароль"""
         # Пытаемся авторизоваться с неправильным паролем
         wrong_password = generate_random_string(10)
         payload = {
-            "login": new_courier["login"],
+            "login": courier_data["login"],
             "password": wrong_password
         }
 
