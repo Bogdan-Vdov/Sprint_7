@@ -35,9 +35,9 @@ class TestLoginCourier:
 
     @allure.title('Проверка авторизации без поля login')
     @allure.description('Если нет поля login, запрос возвращает ошибку')
-    def test_login_courier_without_login_returns_400_error(self):
+    def test_login_courier_without_login_returns_400_error(self, courier_data):
         """Проверка: если нет поля login, запрос возвращает ошибку"""
-        payload = {"password": generate_random_string(10)}
+        payload = {"password": courier_data["password"]}
         response = requests.post(LOGIN_COURIER_URL, data=payload)
 
         # Проверяем код ответа
@@ -50,9 +50,9 @@ class TestLoginCourier:
 
     @allure.title('Проверка авторизации без поля password')
     @allure.description('Если нет поля password, запрос возвращает ошибку')
-    def test_login_courier_without_password_returns_400_error(self):
+    def test_login_courier_without_password_returns_400_error(self, courier_data):
         """Проверка: если нет поля password, запрос возвращает ошибку (возможен таймаут сервера 504)"""
-        payload = {"login": generate_random_string(10)}
+        payload = {"login": courier_data["login"]}
         response = requests.post(LOGIN_COURIER_URL, data=payload)
 
         # Проверяем код ответа (400 или 504 при таймауте сервера)
@@ -102,7 +102,7 @@ class TestLoginCourier:
 
     @allure.title('Проверка авторизации под несуществующим пользователем')
     @allure.description('Если авторизоваться под несуществующим пользователем, запрос возвращает ошибку')
-    def test_login_courier_with_non_existent_user_returns_404_error(self):
+    def test_login_courier_with_non_existent_user_returns_404_error(self, courier_data):
         """Проверка: если авторизоваться под несуществующим пользователем, запрос возвращает ошибку"""
         # Генерируем данные несуществующего пользователя
         login = generate_random_string(10)

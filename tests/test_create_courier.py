@@ -8,7 +8,7 @@ import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from helpers import generate_random_string, login_courier, delete_courier
-from data import CREATE_COURIER_URL
+from data import CREATE_COURIER_URL, ERROR_MESSAGES
 
 
 @allure.suite('Создание курьера')
@@ -70,7 +70,8 @@ class TestCreateCourier:
 
         # Проверяем тело ответа
         response_data = second_response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["duplicate_login"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['duplicate_login']}', получено '{response_data.get('message')}'"
 
         # Добавляем курьера в список для удаления
         courier_cleanup.append({"login": login, "password": password})
@@ -92,9 +93,10 @@ class TestCreateCourier:
         # Проверяем код ответа
         assert response.status_code == 400, f"Ожидался код 400, получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["insufficient_data_for_creation"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['insufficient_data_for_creation']}', получено '{response_data.get('message')}'"
 
     @allure.title('Проверка создания курьера без поля password')
     @allure.description('Если нет поля password, запрос возвращает ошибку')
@@ -113,9 +115,10 @@ class TestCreateCourier:
         # Проверяем код ответа
         assert response.status_code == 400, f"Ожидался код 400, получен {response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["insufficient_data_for_creation"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['insufficient_data_for_creation']}', получено '{response_data.get('message')}'"
 
 
 
@@ -152,9 +155,10 @@ class TestCreateCourier:
         # Проверяем код ответа
         assert second_response.status_code == 409, f"Ожидался код 409, получен {second_response.status_code}"
 
-        # Проверяем тело ответа
+        # Проверяем текст ошибки
         response_data = second_response.json()
-        assert "message" in response_data, "В ответе нет поля 'message'"
+        assert response_data.get("message") == ERROR_MESSAGES["duplicate_login"], \
+            f"Ожидалось сообщение '{ERROR_MESSAGES['duplicate_login']}', получено '{response_data.get('message')}'"
 
         # Добавляем курьера в список для удаления
         courier_cleanup.append({"login": login, "password": password1})
